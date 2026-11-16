@@ -26,7 +26,7 @@ A complete, synthesizable, simulation-verified **Write-Back Cache Controller** d
 - [Verification Scenarios](#verification-scenarios)
 - [Sample Verified Simulation Output](#sample-verified-simulation-output)
 - [Project Report](#project-report)
-- [Demonstration Video](#demonstration-video)
+- [Prototype Demonstration Video](#prototype-demonstration-video)
 - [Team Members & Contributions](#team-members--contributions)
 - [Future Enhancements (Phase II)](#future-enhancements-phase-ii)
 - [License](#license)
@@ -222,9 +222,6 @@ mca-project/
 │   ├── architecture.md          # Architectural Specification & Derivations
 │   └── verification.md          # Verification Methodology & Test Trace
 │
-├── demo/
-│   └── video_link.txt           # Video Link Placeholder & 5-Min Run Order
-│
 ├── generate_diagrams.py         # Matplotlib High-Resolution Diagram Generator
 ├── Makefile                     # Build & Simulation Automation
 ├── LICENSE                      # MIT License
@@ -380,15 +377,18 @@ The complete IEEE-style project report is available in both formatted PDF and Ma
 
 ---
 
-## Demonstration Video
+## Prototype Demonstration Video
 
-- **Video Link:** [Pending Recording — See demo/video_link.txt](demo/video_link.txt)
-- **Planned Duration:** Maximum 5 minutes.
+The project demonstration video covers the team introduction, project overview, Write-Back Cache Controller architecture, Verilog implementation, and simulation results.
+
+- **Maximum Duration:** 5 minutes.
 - **Demonstration Outline:**
-  1. System overview and address breakdown explanation.
-  2. Live terminal simulation run (`make test`).
-  3. GTKWave waveform inspection: Read hit, write hit, main memory preservation, dirty eviction write-back, and clean eviction bypass.
-  4. Reading evicted block from memory and back-to-back request verification.
+  1. Team and project introduction.
+  2. Cache architecture and write-back policy.
+  3. Verilog implementation.
+  4. Live simulation and verification results.
+
+[Watch the Prototype Demonstration](https://drive.google.com/drive/folders/1AMVk8foru5JsWtKMorlUfYZXp7iilGyc?usp=sharing)
 
 ---
 
