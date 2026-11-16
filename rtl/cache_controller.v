@@ -3,7 +3,7 @@
 // Project:      Write-Back Cache Controller — MCA Phase I
 // Description:  Main Finite State Machine (FSM) controller.
 //               Coordinates CPU request decoding, tag comparison, hit/miss detection,
-//               dirty victim eviction to main memory, block refills, cache allocation,
+//               dirty victim eviction to main memory, block refills, write-allocation,
 //               and CPU handshake.
 // Language:     Verilog-2001 (Synthesizable)
 // ============================================================================
@@ -14,12 +14,11 @@ module cache_controller #(
     parameter ADDR_WIDTH        = 32,
     parameter DATA_WIDTH        = 32,
     parameter WORDS_PER_BLOCK   = 4,
-    parameter NUM_SETS          = 4,
-    parameter NUM_WAYS          = 2,
+    parameter NUM_LINES         = 8,
     parameter BYTE_OFFSET_WIDTH = 2,
     parameter WORD_OFFSET_WIDTH = 2,
-    parameter INDEX_WIDTH       = 2,
-    parameter TAG_WIDTH         = ADDR_WIDTH - INDEX_WIDTH - WORD_OFFSET_WIDTH - BYTE_OFFSET_WIDTH, // 26 bits
+    parameter INDEX_WIDTH       = 3, // log2(8) = 3
+    parameter TAG_WIDTH         = ADDR_WIDTH - INDEX_WIDTH - WORD_OFFSET_WIDTH - BYTE_OFFSET_WIDTH, // 25 bits
     parameter BLOCK_WIDTH       = WORDS_PER_BLOCK * DATA_WIDTH // 128 bits
 )(
     input  wire                         clk,
@@ -38,33 +37,25 @@ module cache_controller #(
     output wire [TAG_WIDTH-1:0]         lookup_tag,
     output wire [WORD_OFFSET_WIDTH-1:0] lookup_offset,
     input  wire                         cache_hit,
-    input  wire                         cache_hit_way,
     input  wire [DATA_WIDTH-1:0]        cache_hit_data,
-    input  wire                         cache_victim_way,
-    input  wire                         cache_victim_valid,
-    input  wire                         cache_victim_dirty,
-    input  wire [TAG_WIDTH-1:0]         cache_victim_tag,
-    input  wire [BLOCK_WIDTH-1:0]       cache_victim_block,
+    input  wire                         cache_line_valid,
+    input  wire                         cache_line_dirty,
+    input  wire [TAG_WIDTH-1:0]         cache_line_tag,
+    input  wire [BLOCK_WIDTH-1:0]       cache_line_block,
 
     // Cache Memory Interface (Updates)
     output reg                          wr_word_en,
     output wire [INDEX_WIDTH-1:0]       wr_word_index,
-    output reg                          wr_word_way,
     output wire [WORD_OFFSET_WIDTH-1:0] wr_word_offset,
     output reg  [DATA_WIDTH-1:0]        wr_word_data,
     output reg                          wr_word_dirty,
 
     output reg                          wr_block_en,
     output wire [INDEX_WIDTH-1:0]       wr_block_index,
-    output reg                          wr_block_way,
     output wire [TAG_WIDTH-1:0]         wr_block_tag,
     output reg  [BLOCK_WIDTH-1:0]       wr_block_data,
     output reg                          wr_block_dirty,
     output reg                          wr_block_valid,
-
-    output reg                          update_lru_en,
-    output wire [INDEX_WIDTH-1:0]       update_lru_index,
-    output reg                          accessed_way,
 
     // Main Memory Interface
     output reg                          mem_req,
@@ -82,7 +73,7 @@ module cache_controller #(
 );
 
     // ------------------------------------------------------------------------
-    // FSM State Encoding
+    // FSM State Encoding (9 States)
     // ------------------------------------------------------------------------
     localparam [3:0]
         STATE_IDLE         = 4'd0,
@@ -105,10 +96,10 @@ module cache_controller #(
     reg [DATA_WIDTH-1:0] req_wdata;
     reg                  req_write;
 
-    // Address decomposition of latched request
-    // [31:6] = Tag (26 bits), [5:4] = Index (2 bits), [3:2] = Word Offset (2 bits), [1:0] = Byte Offset (2 bits)
-    wire [TAG_WIDTH-1:0]         req_tag    = req_addr[31:6];
-    wire [INDEX_WIDTH-1:0]       req_index  = req_addr[5:4];
+    // Address decomposition of latched request:
+    // [31:7] = Tag (25 bits), [6:4] = Index (3 bits), [3:2] = Word Offset (2 bits), [1:0] = Byte Offset (2 bits)
+    wire [TAG_WIDTH-1:0]         req_tag    = req_addr[31:7];
+    wire [INDEX_WIDTH-1:0]       req_index  = req_addr[6:4];
     wire [WORD_OFFSET_WIDTH-1:0] req_offset = req_addr[3:2];
 
     // Assign lookup signals to cache_memory
@@ -116,17 +107,14 @@ module cache_controller #(
     assign lookup_tag    = req_tag;
     assign lookup_offset = req_offset;
 
-    assign wr_word_index    = req_index;
-    assign wr_word_offset   = req_offset;
-    assign wr_block_index   = req_index;
-    assign wr_block_tag     = req_tag;
-    assign update_lru_index = req_index;
+    assign wr_word_index  = req_index;
+    assign wr_word_offset = req_offset;
+    assign wr_block_index = req_index;
+    assign wr_block_tag   = req_tag;
 
     // ------------------------------------------------------------------------
-    // Internal Latches for Victim and Refill Data
+    // Internal Registers for Victim and Refill Data
     // ------------------------------------------------------------------------
-    reg                   victim_way_reg;
-    reg                   victim_dirty_reg;
     reg [TAG_WIDTH-1:0]   victim_tag_reg;
     reg [BLOCK_WIDTH-1:0] victim_block_reg;
     reg [BLOCK_WIDTH-1:0] refill_block_reg;
@@ -135,7 +123,8 @@ module cache_controller #(
     reg miss_flag;
     reg dirty_evict_flag;
 
-    assign status_hit         = (state == STATE_READ_HIT  || state == STATE_WRITE_HIT || (state == STATE_COMPLETE && hit_flag));
+    // Status outputs (active during relevant states and held through COMPLETE)
+    assign status_hit         = (state == STATE_READ_HIT || state == STATE_WRITE_HIT || (state == STATE_COMPLETE && hit_flag));
     assign status_miss        = (state == STATE_EVICT_CHECK || state == STATE_WRITE_BACK || state == STATE_MEMORY_READ || state == STATE_CACHE_UPDATE || (state == STATE_COMPLETE && miss_flag));
     assign status_dirty_evict = (state == STATE_WRITE_BACK || (state == STATE_COMPLETE && dirty_evict_flag));
 
@@ -148,8 +137,6 @@ module cache_controller #(
             req_addr         <= {ADDR_WIDTH{1'b0}};
             req_wdata        <= {DATA_WIDTH{1'b0}};
             req_write        <= 1'b0;
-            victim_way_reg   <= 1'b0;
-            victim_dirty_reg <= 1'b0;
             victim_tag_reg   <= {TAG_WIDTH{1'b0}};
             victim_block_reg <= {BLOCK_WIDTH{1'b0}};
             refill_block_reg <= {BLOCK_WIDTH{1'b0}};
@@ -187,15 +174,13 @@ module cache_controller #(
                 end
 
                 STATE_WRITE_HIT: begin
-                    // Word write handled in combinatorial/register controls below
+                    // Word write handled in combinational control below
                 end
 
                 STATE_EVICT_CHECK: begin
-                    victim_way_reg   <= cache_victim_way;
-                    victim_dirty_reg <= cache_victim_valid && cache_victim_dirty;
-                    victim_tag_reg   <= cache_victim_tag;
-                    victim_block_reg <= cache_victim_block;
-                    if (cache_victim_valid && cache_victim_dirty) begin
+                    victim_tag_reg   <= cache_line_tag;
+                    victim_block_reg <= cache_line_block;
+                    if (cache_line_valid && cache_line_dirty) begin
                         dirty_evict_flag <= 1'b1;
                     end else begin
                         dirty_evict_flag <= 1'b0;
@@ -203,7 +188,7 @@ module cache_controller #(
                 end
 
                 STATE_WRITE_BACK: begin
-                    // Waiting for main memory write to complete
+                    // Waiting for main memory write-back handshake
                 end
 
                 STATE_MEMORY_READ: begin
@@ -225,7 +210,7 @@ module cache_controller #(
                 end
 
                 STATE_COMPLETE: begin
-                    // Transaction complete
+                    // Transaction complete, ready asserted
                 end
 
                 default: ;
@@ -267,8 +252,8 @@ module cache_controller #(
             end
 
             STATE_EVICT_CHECK: begin
-                // Check if victim line is valid and dirty
-                if (cache_victim_valid && cache_victim_dirty)
+                // Check if resident line is valid and dirty
+                if (cache_line_valid && cache_line_dirty)
                     next_state = STATE_WRITE_BACK;
                 else
                     next_state = STATE_MEMORY_READ;
@@ -304,21 +289,16 @@ module cache_controller #(
     // Output Generation Logic (Combinational)
     // ------------------------------------------------------------------------
     always @(*) begin
-        // Default values to avoid latches
+        // Default values to prevent unintended latches
         cpu_ready      = 1'b0;
         wr_word_en     = 1'b0;
-        wr_word_way    = 1'b0;
         wr_word_data   = req_wdata;
         wr_word_dirty  = 1'b1;
 
         wr_block_en    = 1'b0;
-        wr_block_way   = victim_way_reg;
         wr_block_data  = refill_block_reg;
         wr_block_dirty = 1'b0;
         wr_block_valid = 1'b1;
-
-        update_lru_en  = 1'b0;
-        accessed_way   = 1'b0;
 
         mem_req        = 1'b0;
         mem_write      = 1'b0;
@@ -327,34 +307,27 @@ module cache_controller #(
 
         case (state)
             STATE_READ_HIT: begin
-                // Update LRU on read hit
-                update_lru_en = 1'b1;
-                accessed_way  = cache_hit_way;
+                // Data output handled in synchronous block
             end
 
             STATE_WRITE_HIT: begin
-                // Update word in cache line and set dirty bit
+                // Write hit: update cache word and mark dirty bit
                 wr_word_en    = 1'b1;
-                wr_word_way   = cache_hit_way;
                 wr_word_data  = req_wdata;
                 wr_word_dirty = 1'b1;
-
-                // Update LRU on write hit
-                update_lru_en = 1'b1;
-                accessed_way  = cache_hit_way;
             end
 
             STATE_WRITE_BACK: begin
-                // Drive write-back request to main memory
+                // Dirty eviction: issue write-back to original memory address
                 mem_req        = 1'b1;
                 mem_write      = 1'b1;
-                // Victim block address: {victim_tag, req_index, 4'b0000}
+                // Original block address = {victim_tag_reg, req_index, 4'b0000}
                 mem_addr       = {victim_tag_reg, req_index, 4'b0000};
                 mem_write_data = victim_block_reg;
             end
 
             STATE_MEMORY_READ: begin
-                // Drive read request for required block to main memory
+                // Read refill: fetch required block from main memory
                 mem_req   = 1'b1;
                 mem_write = 1'b0;
                 mem_addr  = {req_tag, req_index, 4'b0000};
@@ -362,16 +335,15 @@ module cache_controller #(
 
             STATE_CACHE_UPDATE: begin
                 wr_block_en    = 1'b1;
-                wr_block_way   = victim_way_reg;
                 wr_block_valid = 1'b1;
 
                 if (!req_write) begin
-                    // Read Miss Refill
+                    // Read Miss: install fetched block cleanly
                     wr_block_data  = refill_block_reg;
-                    wr_block_dirty = 1'b0; // Clean on fresh refill
+                    wr_block_dirty = 1'b0;
                 end else begin
                     // Write Miss: Write-Allocate (merge new word into refill block)
-                    wr_block_dirty = 1'b1; // Mark dirty since word is modified
+                    wr_block_dirty = 1'b1;
                     case (req_offset)
                         2'b00: wr_block_data = {refill_block_reg[127:32], req_wdata};
                         2'b01: wr_block_data = {refill_block_reg[127:64], req_wdata, refill_block_reg[31:0]};
@@ -379,10 +351,6 @@ module cache_controller #(
                         2'b11: wr_block_data = {req_wdata, refill_block_reg[95:0]};
                     endcase
                 end
-
-                // Update LRU for refilled way
-                update_lru_en = 1'b1;
-                accessed_way  = victim_way_reg;
             end
 
             STATE_COMPLETE: begin

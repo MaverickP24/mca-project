@@ -10,7 +10,7 @@ GTKWAVE     := gtkwave
 
 # Flags
 VFLAGS      := -g2001 -Wall -I rtl
-SIM_FLAGS   := 
+SIM_FLAGS   :=
 
 # Directories
 RTL_DIR     := rtl
@@ -78,4 +78,3 @@ help:
 	@echo "  make wave     : Open simulation waveform in GTKWave"
 	@echo "  make clean    : Remove compiled binaries and waveforms"
 	@echo "  make help     : Display this help message"
-

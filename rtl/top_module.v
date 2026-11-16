@@ -2,9 +2,9 @@
 // Module Name:  top_module
 // Project:      Write-Back Cache Controller — MCA Phase I
 // Description:  Top-level integration module connecting:
-//               - cache_controller (FSM, request handling, eviction logic)
-//               - cache_memory (2-way set-associative data/tag/valid/dirty/LRU storage)
-//               - main_memory (behavioral 128-bit block memory with realistic latency)
+//               - cache_controller (9-State FSM, request handling, write-back sequencing)
+//               - cache_memory (Direct-mapped data, tag, valid, and dirty storage)
+//               - main_memory (Behavioral 128-bit block memory with realistic latency)
 // Language:     Verilog-2001 (Synthesizable structural design)
 // ============================================================================
 
@@ -14,12 +14,11 @@ module top_module #(
     parameter ADDR_WIDTH        = 32,
     parameter DATA_WIDTH        = 32,
     parameter WORDS_PER_BLOCK   = 4,
-    parameter NUM_SETS          = 4,
-    parameter NUM_WAYS          = 2,
+    parameter NUM_LINES         = 8,
     parameter BYTE_OFFSET_WIDTH = 2,
     parameter WORD_OFFSET_WIDTH = 2,
-    parameter INDEX_WIDTH       = 2,
-    parameter TAG_WIDTH         = ADDR_WIDTH - INDEX_WIDTH - WORD_OFFSET_WIDTH - BYTE_OFFSET_WIDTH, // 26 bits
+    parameter INDEX_WIDTH       = 3, // log2(8) = 3
+    parameter TAG_WIDTH         = ADDR_WIDTH - INDEX_WIDTH - WORD_OFFSET_WIDTH - BYTE_OFFSET_WIDTH, // 25 bits
     parameter BLOCK_WIDTH       = WORDS_PER_BLOCK * DATA_WIDTH, // 128 bits
     parameter MEM_BLOCKS        = 1024,
     parameter MEM_LATENCY       = 2
@@ -52,39 +51,24 @@ module top_module #(
     wire [WORD_OFFSET_WIDTH-1:0] lookup_offset;
 
     wire                         cache_hit;
-    wire                         cache_hit_way;
     wire [DATA_WIDTH-1:0]        cache_hit_data;
-    wire                         cache_victim_way;
-    wire                         cache_victim_valid;
-    wire                         cache_victim_dirty;
-    wire [TAG_WIDTH-1:0]         cache_victim_tag;
-    wire [BLOCK_WIDTH-1:0]       cache_victim_block;
-
-    wire                         way0_v;
-    wire                         way1_v;
-    wire                         way0_d;
-    wire                         way1_d;
-    wire [TAG_WIDTH-1:0]         way0_t;
-    wire [TAG_WIDTH-1:0]         way1_t;
+    wire                         cache_line_valid;
+    wire                         cache_line_dirty;
+    wire [TAG_WIDTH-1:0]         cache_line_tag;
+    wire [BLOCK_WIDTH-1:0]       cache_line_block;
 
     wire                         wr_word_en;
     wire [INDEX_WIDTH-1:0]       wr_word_index;
-    wire                         wr_word_way;
     wire [WORD_OFFSET_WIDTH-1:0] wr_word_offset;
     wire [DATA_WIDTH-1:0]        wr_word_data;
     wire                         wr_word_dirty;
 
     wire                         wr_block_en;
     wire [INDEX_WIDTH-1:0]       wr_block_index;
-    wire                         wr_block_way;
     wire [TAG_WIDTH-1:0]         wr_block_tag;
     wire [BLOCK_WIDTH-1:0]       wr_block_data;
     wire                         wr_block_dirty;
     wire                         wr_block_valid;
-
-    wire                         update_lru_en;
-    wire [INDEX_WIDTH-1:0]       update_lru_index;
-    wire                         accessed_way;
 
     // ------------------------------------------------------------------------
     // Interconnect Signals between Cache Controller and Main Memory
@@ -106,8 +90,7 @@ module top_module #(
         .ADDR_WIDTH        (ADDR_WIDTH),
         .DATA_WIDTH        (DATA_WIDTH),
         .WORDS_PER_BLOCK   (WORDS_PER_BLOCK),
-        .NUM_SETS          (NUM_SETS),
-        .NUM_WAYS          (NUM_WAYS),
+        .NUM_LINES         (NUM_LINES),
         .BYTE_OFFSET_WIDTH (BYTE_OFFSET_WIDTH),
         .WORD_OFFSET_WIDTH (WORD_OFFSET_WIDTH),
         .INDEX_WIDTH       (INDEX_WIDTH),
@@ -130,33 +113,25 @@ module top_module #(
         .lookup_tag         (lookup_tag),
         .lookup_offset      (lookup_offset),
         .cache_hit          (cache_hit),
-        .cache_hit_way      (cache_hit_way),
         .cache_hit_data     (cache_hit_data),
-        .cache_victim_way   (cache_victim_way),
-        .cache_victim_valid (cache_victim_valid),
-        .cache_victim_dirty (cache_victim_dirty),
-        .cache_victim_tag   (cache_victim_tag),
-        .cache_victim_block (cache_victim_block),
+        .cache_line_valid   (cache_line_valid),
+        .cache_line_dirty   (cache_line_dirty),
+        .cache_line_tag     (cache_line_tag),
+        .cache_line_block   (cache_line_block),
 
         // Cache Memory Writes
         .wr_word_en         (wr_word_en),
         .wr_word_index      (wr_word_index),
-        .wr_word_way        (wr_word_way),
         .wr_word_offset     (wr_word_offset),
         .wr_word_data       (wr_word_data),
         .wr_word_dirty      (wr_word_dirty),
 
         .wr_block_en        (wr_block_en),
         .wr_block_index     (wr_block_index),
-        .wr_block_way       (wr_block_way),
         .wr_block_tag       (wr_block_tag),
         .wr_block_data      (wr_block_data),
         .wr_block_dirty     (wr_block_dirty),
         .wr_block_valid     (wr_block_valid),
-
-        .update_lru_en      (update_lru_en),
-        .update_lru_index   (update_lru_index),
-        .accessed_way       (accessed_way),
 
         // Main Memory
         .mem_req            (mem_req),
@@ -174,14 +149,13 @@ module top_module #(
     );
 
     // ------------------------------------------------------------------------
-    // Cache Memory Storage Array Instance
+    // Cache Memory Storage Array Instance (Direct-Mapped)
     // ------------------------------------------------------------------------
     cache_memory #(
         .ADDR_WIDTH        (ADDR_WIDTH),
         .DATA_WIDTH        (DATA_WIDTH),
         .WORDS_PER_BLOCK   (WORDS_PER_BLOCK),
-        .NUM_SETS          (NUM_SETS),
-        .NUM_WAYS          (NUM_WAYS),
+        .NUM_LINES         (NUM_LINES),
         .BYTE_OFFSET_WIDTH (BYTE_OFFSET_WIDTH),
         .WORD_OFFSET_WIDTH (WORD_OFFSET_WIDTH),
         .INDEX_WIDTH       (INDEX_WIDTH),
@@ -197,40 +171,25 @@ module top_module #(
         .lookup_offset     (lookup_offset),
 
         .hit               (cache_hit),
-        .hit_way           (cache_hit_way),
         .hit_data          (cache_hit_data),
-        .victim_way        (cache_victim_way),
-        .victim_valid      (cache_victim_valid),
-        .victim_dirty      (cache_victim_dirty),
-        .victim_tag        (cache_victim_tag),
-        .victim_block_data (cache_victim_block),
-
-        .way0_valid        (way0_v),
-        .way1_valid        (way1_v),
-        .way0_dirty        (way0_d),
-        .way1_dirty        (way1_d),
-        .way0_tag          (way0_t),
-        .way1_tag          (way1_t),
+        .line_valid        (cache_line_valid),
+        .line_dirty        (cache_line_dirty),
+        .line_tag          (cache_line_tag),
+        .line_block_data   (cache_line_block),
 
         // Writes
         .wr_word_en        (wr_word_en),
         .wr_word_index     (wr_word_index),
-        .wr_word_way       (wr_word_way),
         .wr_word_offset    (wr_word_offset),
         .wr_word_data      (wr_word_data),
         .wr_word_dirty     (wr_word_dirty),
 
         .wr_block_en       (wr_block_en),
         .wr_block_index    (wr_block_index),
-        .wr_block_way      (wr_block_way),
         .wr_block_tag      (wr_block_tag),
         .wr_block_data     (wr_block_data),
         .wr_block_dirty    (wr_block_dirty),
-        .wr_block_valid    (wr_block_valid),
-
-        .update_lru_en     (update_lru_en),
-        .update_lru_index  (update_lru_index),
-        .accessed_way      (accessed_way)
+        .wr_block_valid    (wr_block_valid)
     );
 
     // ------------------------------------------------------------------------
@@ -255,4 +214,3 @@ module top_module #(
     );
 
 endmodule
-
