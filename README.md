@@ -25,7 +25,7 @@ A complete, synthesizable, simulation-verified **Write-Back Cache Controller** d
 - [Simulation & Build Instructions](#simulation--build-instructions)
 - [Verification Scenarios](#verification-scenarios)
 - [Sample Verified Simulation Output](#sample-verified-simulation-output)
-- [IEEE Project Report](#ieee-project-report)
+- [Project Report](#project-report)
 - [Demonstration Video](#demonstration-video)
 - [Team Members & Contributions](#team-members--contributions)
 - [Future Enhancements (Phase II)](#future-enhancements-phase-ii)
@@ -208,7 +208,8 @@ mca-project/
 │   └── fsm_diagram.png          # Controller FSM State Diagram
 │
 ├── report/
-│   └── IEEE_Project_Report.md   # IEEE-Style Conference Paper Report
+│   ├── IEEE_Project_Report.pdf  # Finalized IEEE-Style Project Report (PDF)
+│   └── IEEE_Project_Report.md   # IEEE-Style Conference Paper Report (Markdown)
 │
 ├── docs/
 │   ├── architecture.md          # Architectural Specification & Derivations
@@ -357,9 +358,14 @@ VCD info: dumpfile simulation/waveforms/cache_simulation.vcd opened for output.
 
 ---
 
-## IEEE Project Report
+## Project Report
 
-An IEEE conference-style report is provided in [report/IEEE_Project_Report.md](report/IEEE_Project_Report.md). It includes:
+The complete, publication-ready IEEE-style project report is available in both formatted PDF and Markdown versions:
+
+- [Download IEEE Project Report](report/IEEE_Project_Report.pdf)
+- [View Markdown Report](report/IEEE_Project_Report.md)
+
+### Key Sections:
 - Formal abstract, literature survey, and mathematical address derivations.
 - Micro-architectural FSM state transition matrices and write-back proofs.
 - Empirical simulation evaluation distinguishing theoretical expectations and actual results.
