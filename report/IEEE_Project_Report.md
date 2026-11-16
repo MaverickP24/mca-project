@@ -1,15 +1,18 @@
 # Design, Implementation, and Cycle-Accurate Verification of a Write-Back Cache Controller in Verilog-2001
 
-**Course / Evaluation:** Master of Computer Applications (MCA) — Phase I Evaluation
-**Project Title:** Write-Back Cache Controller
-**Document Format:** IEEE Conference Style Technical Report
+**Course / Evaluation:** Master of Computer Applications (MCA) — Phase I Evaluation<br>
+**Project Title:** Write-Back Cache Controller<br>
+**Team:** MCA_Project_2024_D_Team2<br>
+**Institution:** Rishihood University<br>
+**Authors:** Hrishabh Prajapati (2401020027), Jigyasu Kalyan (2401010201), Pratyush Parida (2401010351), Preet Vardhan (2401010352), Raghav Gupta (2401010365)<br>
+**Document Format:** IEEE Conference Style Technical Report<br>
 **Date:** November 16, 2026
 
 ---
 
 ## Abstract
 
-In contemporary computer architectures, the divergence between high-frequency central processing units (CPUs) and relatively slow off-chip dynamic RAM (DRAM)—frequently characterized as the "memory wall"—constitutes a fundamental system throughput bottleneck. Cache memory systems mitigate this latency by exploiting spatial and temporal locality of reference. Among cache design dimensions, the write policy critically dictates bus bandwidth utilization, system power dissipation, and memory traffic. This paper presents the architecture, synthesizable Register-Transfer Level (RTL) implementation, and cycle-accurate functional verification of a **Write-Back Cache Controller** with **write-allocation** and dedicated per-line **dirty-bit management**. Designed in synthesizable Verilog-2001, the cache employs a direct-mapped organization comprising 8 cache lines with 4 words (128 bits) per block, serving 32-bit byte-addressed requests from a host processor. A 9-state Mealy/Moore hybrid Finite State Machine (FSM) orchestrates request decoding, hit/miss detection, clean eviction bypass, and dirty line write-backs prior to block refills. The controller was verified using Icarus Verilog and GTKWave across twelve comprehensive verification scenarios encompassing cold read misses, resident read hits, write hits with dirty-bit assertion, proof of main memory preservation during write hits, write misses with write-allocation, dirty line evictions with memory write-back, clean line eviction bypass, reading previously written-back data, and zero-idle-cycle back-to-back CPU transactions. All 19 programmatic assertions passed with zero defects, demonstrating a verified, synthesizable prototype suitable for embedded and general-purpose micro-architectures.
+In contemporary computer architectures, the divergence between high-frequency central processing units (CPUs) and relatively slow off-chip dynamic RAM (DRAM)—frequently characterized as the "memory wall"—constitutes a fundamental system throughput bottleneck. Cache memory systems mitigate this latency by exploiting spatial and temporal locality of reference. Among cache design dimensions, the write policy critically dictates bus bandwidth utilization, system power dissipation, and memory traffic. This paper presents the architecture, Register-Transfer Level (RTL) implementation, and cycle-accurate functional verification of a **Write-Back Cache Controller** with **write-allocation** and dedicated per-line **dirty-bit management**. Designed in Verilog-2001, the cache employs a direct-mapped organization comprising 8 cache lines with 4 words (128 bits) per block (128 bytes total data capacity), serving aligned 32-bit word requests (`cpu_addr[1:0] == 2'b00`) from a host processor using a 25-bit Tag `[31:7]`, 3-bit Line Index `[6:4]`, and 2-bit Word Offset `[3:2]`. A 9-state Mealy/Moore hybrid Finite State Machine (FSM) orchestrates request decoding, hit/miss detection, clean eviction bypass, and dirty line write-backs prior to block refills. The controller connects to a behavioral 16 KB main memory simulation model (1,024 blocks of 128 bits indexed via address bits `[13:4]`). Functional verification was conducted using Icarus Verilog and GTKWave across twelve targeted verification scenarios exercising cold read misses, resident read hits, write hits with dirty-bit assertion, proof of main memory preservation during write hits, write misses with write-allocation, dirty line evictions with memory write-back, clean line eviction bypass, reading previously written-back data, and zero-idle-cycle back-to-back CPU transactions. All 19 programmed assertions passed successfully with zero defects, verifying the correctness of the write-back and write-allocation architecture.
 
 ---
 
@@ -100,7 +103,7 @@ The cache subsystem connects between a host CPU interface and a backing main mem
 
 ### Address Decomposition
 
-The CPU issues 32-bit byte addresses (`cpu_addr[31:0]`). The direct-mapped cache parameters are derived as follows:
+The CPU issues 32-bit byte addresses (`cpu_addr[31:0]`). The prototype controller is designed for word-aligned 32-bit memory accesses (`cpu_addr[1:0] == 2'b00`). The direct-mapped cache parameters are derived as follows:
 - **Address Width ($A$):** 32 bits (`cpu_addr[31:0]`)
 - **Word Width ($W$):** 32 bits (4 bytes)
 - **Words per Block ($K$):** 4 words
@@ -120,6 +123,14 @@ $$\text{Address Width} = \text{Tag Width} + \text{Index Width} + \text{Word Offs
 4. **Tag ($\text{Tag}$):** $32 - (3 + 2 + 2) = 25\text{ bits} \implies \texttt{cpu\_addr[31:7]}$. Uniquely identifies memory blocks mapped to each line.
 
 $$\underbrace{\texttt{cpu\_addr[31:7]}}_{\text{Tag: 25 bits}} \quad \vert \quad \underbrace{\texttt{cpu\_addr[6:4]}}_{\text{Index: 3 bits}} \quad \vert \quad \underbrace{\texttt{cpu\_addr[3:2]}}_{\text{Word Offset: 2 bits}} \quad \vert \quad \underbrace{\texttt{cpu\_addr[1:0]}}_{\text{Byte Offset: 2 bits}}$$
+
+### Behavioral Main Memory Subsystem & Simulation Scope
+
+The simulation environment integrates a behavioral main memory model (`rtl/main_memory.v`):
+- **Storage Capacity:** 1,024 blocks of 128 bits, totaling 16 KB of backing storage.
+- **Addressing Mechanism:** The memory model uses address bits `[13:4]` (10 bits) to select among its 1,024 blocks, addressing bytes `0x0000_0000` through `0x0000_3FFF`.
+- **Architectural Scope Limitation:** Memory requests with identical `[13:4]` address bits alias to the same simulated block location. This abstraction avoids multi-megabyte simulation memory overhead while providing cycle-accurate latency modeling for functional verification, but represents a simulation modeling limitation.
+- **Simulation Verification Boundary:** The cache controller and cache memory are structured using standard synthesizable Verilog-2001 constructs. However, all verification in Phase I was conducted via cycle-accurate RTL simulation in Icarus Verilog; no physical FPGA synthesis, ASIC place-and-route, or physical hardware measurements have been conducted.
 
 ---
 
@@ -283,30 +294,30 @@ The testbench (`testbench/tb_cache_controller.v`) executes twelve targeted verif
 ## XI. Results and Discussion
 
 The empirical simulation results demonstrate:
-1. **Bus Traffic Reduction:** Write hits incur zero off-chip memory transactions. For write-intensive workloads, this reduces memory bus occupancy by up to $85\%$ compared to write-through architectures.
+1. **Bus Traffic Reduction:** Write hits incur zero off-chip memory transactions. For workloads exhibiting high temporal and spatial write locality, the write-back policy substantially reduces off-chip memory bus utilization and eliminates processor write stalls compared to a write-through approach.
 2. **Deterministic Hit Latency:** Both read hits and write hits complete in 2 clock cycles (1 cycle lookup, 1 cycle execution/handshake).
 3. **Hardware Coherency:** Reconstructing victim block addresses from resident tag registers ensures dirty data is never lost or misdirected.
-4. **Synthesizability:** The design exhibits zero timing loops, no unsynthesizable constructs, and clean reset initialization.
+4. **Synthesizability:** The controller and cache memory modules exhibit zero timing loops, no unsynthesizable constructs, and clean synchronous reset initialization.
 
 ---
 
 ## XII. Individual Contributions
 
-*(Placeholder section to be completed upon allocation of group member responsibilities for MCA Phase I submission.)*
+The project was completed by the assigned academic project team listed below. The architectural specification, synthesizable RTL implementation, system integration, simulation testbench development, cycle-accurate verification, technical documentation, and repository management were completed by Hrishabh Prajapati (2401020027). No technical contributions were made by the other listed team members.
 
-| Team Member Name | Roll / Reg. No. | Assigned Hardware Subsystem | Verification Role |
-| :--- | :---: | :--- | :--- |
-| **Member 1 (Placeholder)** | [Roll No. 1] | FSM Design & Main Controller RTL (`cache_controller.v`) | Tests 1, 2, 3, 4 |
-| **Member 2 (Placeholder)** | [Roll No. 2] | Cache Storage Array & Tag Matching (`cache_memory.v`) | Tests 5, 6 |
-| **Member 3 (Placeholder)** | [Roll No. 3] | Behavioral Main Memory Model (`main_memory.v`) | Tests 7, 8, 9 |
-| **Member 4 (Placeholder)** | [Roll No. 4] | Self-Checking Testbench Architecture (`tb_cache_controller.v`) | Tests 10, 11, 12 |
-| **Member 5 (Placeholder)** | [Roll No. 5] | Technical Diagrams, Makefile & Documentation | Report & Documentation |
+| Team Member | Roll / Reg. No. | Contribution |
+| :--- | :---: | :--- |
+| **Hrishabh Prajapati** | 2401020027 | Architecture, RTL implementation, system integration, testbench, verification, documentation, and repository management |
+| **Jigyasu Kalyan** | 2401010201 | No technical contribution reported |
+| **Pratyush Parida** | 2401010351 | No technical contribution reported |
+| **Preet Vardhan** | 2401010352 | No technical contribution reported |
+| **Raghav Gupta** | 2401010365 | No technical contribution reported |
 
 ---
 
 ## XIII. Conclusion and Future Scope
 
-This project designed, implemented, and verified a **Write-Back Cache Controller** in synthesizable Verilog-2001. A 9-state Mealy/Moore FSM coordinates request decoding, hit/miss detection, clean eviction bypass, and dirty line write-backs prior to block refills. Comprehensive self-checking verification confirmed $100\%$ test coverage across all specified functional requirements.
+This project designed, implemented, and verified a **Write-Back Cache Controller** in Verilog-2001. A 9-state Mealy/Moore FSM coordinates request decoding, hit/miss detection, clean eviction bypass, and dirty line write-backs prior to block refills. Cycle-accurate functional verification confirmed that all 19 programmed assertions passed across 12 targeted verification scenarios, validating the write-back, write-allocation, and eviction mechanisms.
 
 ### Future Scope (Phase II):
 1. **Standard Bus Protocol Compliance:** Interface the controller with standard AMBA AXI4 or Wishbone bus interfaces.

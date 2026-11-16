@@ -44,7 +44,7 @@ This repository implements a **Write-Back Cache Controller** with **write-alloca
 ## Problem Statement
 
 To design, implement in Verilog-2001, and verify via cycle-accurate simulation a robust, synthesizable **Write-Back Cache Controller** that:
-1. Handles 32-bit byte-addressed CPU read and write transactions.
+1. Handles aligned 32-bit byte-addressed CPU read and write transactions (`cpu_addr[1:0] == 2'b00`).
 2. Implements a direct-mapped cache organization with 4 words (128 bits) per cache line to exploit spatial locality.
 3. Enforces the **write-back policy**, ensuring that write hits update only local cache storage and set the dirty bit while leaving backing main memory unmodified.
 4. Implements the **write-allocate policy**, refilling memory blocks on write misses, modifying the target word, and marking the cache line dirty.
@@ -76,7 +76,7 @@ To design, implement in Verilog-2001, and verify via cycle-accurate simulation a
 - **Deterministic Clean Eviction:** Bypasses main memory write-back if the evicted line is clean, saving 3 bus cycles.
 - **Coherent Dirty Eviction:** Writes the full 128-bit dirty block back to its original memory address before refilling.
 - **9-State Robust FSM:** Clean state transitions separating lookup, hit servicing, eviction, memory refill, and handshake.
-- **Self-Checking Testbench:** Automated suite covering 12 comprehensive scenarios (19 individual checks) with 100% pass rate.
+- **Self-Checking Testbench:** Automated suite covering 12 comprehensive scenarios with 19 programmed assertion checks (19/19 checks passed).
 
 ---
 
@@ -179,9 +179,16 @@ The controller operates across 9 deterministic states:
 | :--- | :--- | :--- |
 | **`cache_controller`** | [`rtl/cache_controller.v`](rtl/cache_controller.v) | 9-state FSM, hit/miss detection, dirty eviction, write-allocate |
 | **`cache_memory`** | [`rtl/cache_memory.v`](rtl/cache_memory.v) | Direct-mapped storage (8 lines), valid/dirty bits, tag/data arrays |
-| **`main_memory`** | [`rtl/main_memory.v`](rtl/main_memory.v) | Behavioral 128-bit block memory (1024 blocks), 2-cycle latency model |
+| **`main_memory`** | [`rtl/main_memory.v`](rtl/main_memory.v) | Behavioral 128-bit block memory (1,024 blocks), 2-cycle latency model |
 | **`top_module`** | [`rtl/top_module.v`](rtl/top_module.v) | Structural top integration interconnecting CPU, cache, and memory |
 | **`tb_cache_controller`**| [`testbench/tb_cache_controller.v`](testbench/tb_cache_controller.v) | Self-checking testbench (12 scenarios, 19 assertions) |
+
+### Behavioral Main Memory Subsystem & Simulation Scope
+
+- **Storage Structure:** The backing memory model (`rtl/main_memory.v`) provides 1,024 blocks of 128 bits each (16 KB total storage) with configurable 2-cycle latency to emulate physical memory timing.
+- **Address Selection:** Blocks are indexed using address bits `[13:4]` (10 bits), covering byte addresses `0x0000_0000` through `0x0000_3FFF`.
+- **Simulation Modeling Boundary:** Addresses with identical `[13:4]` bit patterns map to the same simulated block location. This abstraction avoids multi-megabyte simulation overhead while providing cycle-accurate latency modeling for functional verification.
+- **Simulation Verification Boundary:** The cache controller and cache memory are written using standard synthesizable Verilog-2001 constructs. However, physical FPGA/ASIC synthesis, place-and-route, and hardware validation have not been performed in Phase I; all reported results reflect cycle-accurate RTL simulation in Icarus Verilog.
 
 ---
 
@@ -360,7 +367,7 @@ VCD info: dumpfile simulation/waveforms/cache_simulation.vcd opened for output.
 
 ## Project Report
 
-The complete, publication-ready IEEE-style project report is available in both formatted PDF and Markdown versions:
+The complete IEEE-style project report is available in both formatted PDF and Markdown versions:
 
 - [Download IEEE Project Report](report/IEEE_Project_Report.pdf)
 - [View Markdown Report](report/IEEE_Project_Report.md)
@@ -387,15 +394,18 @@ The complete, publication-ready IEEE-style project report is available in both f
 
 ## Team Members & Contributions
 
-*(Fill with project group member details prior to final submission)*
+**Team:** MCA_Project_2024_D_Team2<br>
+**Institution:** Rishihood University
 
-| Member Name | Roll No. | Subsystem Responsibility | Verification Role |
-| :--- | :---: | :--- | :--- |
-| **Member 1 (Placeholder)** | [Roll No. 1] | FSM & Cache Controller (`cache_controller.v`) | Tests 1, 2, 3, 4 |
-| **Member 2 (Placeholder)** | [Roll No. 2] | Cache Storage & Tag Logic (`cache_memory.v`) | Tests 5, 6 |
-| **Member 3 (Placeholder)** | [Roll No. 3] | Main Memory Behavioral Model (`main_memory.v`) | Tests 7, 8, 9 |
-| **Member 4 (Placeholder)** | [Roll No. 4] | Testbench & Handshake (`tb_cache_controller.v`) | Tests 10, 11, 12 |
-| **Member 5 (Placeholder)** | [Roll No. 5] | Technical Diagrams, Makefile & Documentation | Report & Documentation |
+The project implementation was primarily completed by Hrishabh Prajapati, including architecture design, Verilog RTL implementation, system integration, testbench development, simulation verification, technical documentation, and repository management. No technical contributions were made by the other listed team members.
+
+| Team Member | Roll No. | Subsystem Responsibility & Contribution |
+| :--- | :---: | :--- |
+| **Hrishabh Prajapati** | 2401020027 | Architecture, RTL implementation, system integration, testbench development, simulation verification, documentation, and repository management |
+| **Jigyasu Kalyan** | 2401010201 | No technical contribution reported |
+| **Pratyush Parida** | 2401010351 | No technical contribution reported |
+| **Preet Vardhan** | 2401010352 | No technical contribution reported |
+| **Raghav Gupta** | 2401010365 | No technical contribution reported |
 
 ---
 
