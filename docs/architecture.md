@@ -133,10 +133,12 @@ When a miss occurs at index $I$:
 - Synchronous write ports for single-word update (write hit) and 128-bit block refill (miss allocation).
 
 ### 3. `main_memory.v`
-- Behavioral 128-bit block memory (1024 blocks = 16 KB).
+- Behavioral 128-bit block memory (1,024 blocks = 16 KB total storage).
 - Emulates physical DRAM latency with a configurable 2-cycle wait counter.
+- Decodes address bits `[13:4]` (10 bits) to select among its 1,024 blocks. Addresses beyond 16 KB wrap within this window.
 - Deterministically initialized such that each word equals `(block_index * 16) + offset + 32'h1000_0000`.
 - Provides backdoor function `get_word(addr)` for testbench verification.
+- *Note:* This is a behavioral simulation model for cycle-accurate functional verification; physical FPGA/ASIC synthesis and hardware validation have not been performed in Phase I.
 
 ### 4. `top_module.v`
 - Top-level structural integration wrapping the controller, cache memory, and main memory.
