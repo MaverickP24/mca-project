@@ -1,0 +1,34 @@
+================================================================================
+MCA Phase I Project Demonstration Video Link
+================================================================================
+
+Title: Write-Back Cache Controller — MCA Phase I Demonstration
+Duration: 5 Minutes (Max)
+Submission Deadline: November 16, 2026, 11:59 PM IST
+
+VIDEO LINK:
+[PENDING RECORDING]
+(Insert unlisted YouTube link or Google Drive link here after recording)
+
+DEMONSTRATION TALKING POINTS (5-MINUTE RUNNING ORDER):
+1. [0:00 - 1:00] Introduction & Architecture:
+   - 2-way set-associative cache, 4 sets, 4 words per block, 32-bit data.
+   - Address decomposition: Tag [31:6] (26 bits), Index [5:4] (2 bits), Offset [3:2] (2 bits).
+2. [1:00 - 2:00] FSM Controller & Policies:
+   - 9-state Mealy/Moore FSM (IDLE -> LOOKUP -> READ_HIT / WRITE_HIT / EVICT_CHECK -> WRITE_BACK -> MEMORY_READ -> CACHE_UPDATE -> COMPLETE).
+   - Write-back policy (dirty bit per line) and Write-allocate on write miss.
+3. [2:00 - 3:30] Simulation Walkthrough (GTKWave):
+   - Run `make test` live in terminal showing 23/23 tests passing.
+   - Inspect waveforms in GTKWave:
+     * Read miss refill followed by single-cycle read hit.
+     * Write hit asserting dirty bit.
+     * Dirty line eviction: write-back to memory followed by refill.
+     * Clean eviction: skipping write-back state.
+4. [3:30 - 4:30] LRU Replacement & Back-to-Back Request Verification:
+   - Demonstrate 1-bit LRU per set promoting MRU on access.
+   - Show seamless consecutive transactions without protocol deadlocks.
+5. [4:30 - 5:00] Conclusion & Phase II Scope:
+   - Summary of verified hardware metrics, synthesizability, and roadmap for Phase II.
+
+================================================================================
+

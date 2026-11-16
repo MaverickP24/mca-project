@@ -1,0 +1,26 @@
+# Icarus Verilog & VVP build artifacts
+*.out
+*.vvp
+simulation/*.out
+
+# Waveforms (large binary/text traces)
+# Uncomment to ignore VCD files if needed; currently keeping .gitkeep in folder
+*.vcd
+simulation/waveforms/*.vcd
+
+# Python cache & config
+__pycache__/
+*.py[cod]
+*$py.class
+/tmp/matplotlib_cache/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.swp
+*~
+
