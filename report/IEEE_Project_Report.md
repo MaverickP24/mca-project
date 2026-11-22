@@ -303,13 +303,13 @@ The empirical simulation results demonstrate:
 
 ## XII. Individual Contributions
 
-The project was completed by the assigned academic project team listed below. The architectural specification, synthesizable RTL implementation, system integration, simulation testbench development, cycle-accurate verification, technical documentation, and repository management were completed by Hrishabh Prajapati (2401020027). No technical contributions were made by the other listed team members.
+The project was completed by the assigned academic project team listed below. Hrishabh Prajapati (2401020027) led the architectural specification, synthesizable RTL implementation, system integration, simulation testbench development, cycle-accurate verification, technical documentation, and repository management. Pratyush Parida's technical contribution was approximately half of Hrishabh's. No technical contributions were reported for the other listed team members.
 
 | Team Member | Roll / Reg. No. | Contribution |
 | :--- | :---: | :--- |
 | **Hrishabh Prajapati** | 2401020027 | Architecture, RTL implementation, system integration, testbench, verification, documentation, and repository management |
 | **Jigyasu Kalyan** | 2401010201 | No technical contribution reported |
-| **Pratyush Parida** | 2401010351 | No technical contribution reported |
+| **Pratyush Parida** | 2401010351 | Technical project contribution approximately half of Hrishabh Prajapati's contribution |
 | **Preet Vardhan** | 2401010352 | No technical contribution reported |
 | **Raghav Gupta** | 2401010365 | No technical contribution reported |
 

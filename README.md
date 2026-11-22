@@ -397,13 +397,13 @@ The project demonstration video covers the team introduction, project overview, 
 **Team:** MCA_Project_2024_D_Team2<br>
 **Institution:** Rishihood University
 
-The project implementation was primarily completed by Hrishabh Prajapati, including architecture design, Verilog RTL implementation, system integration, testbench development, simulation verification, technical documentation, and repository management. No technical contributions were made by the other listed team members.
+Hrishabh Prajapati led the project implementation, including architecture design, Verilog RTL implementation, system integration, testbench development, simulation verification, technical documentation, and repository management. Pratyush Parida's technical contribution was approximately half of Hrishabh's. No technical contributions were reported for the other listed team members.
 
 | Team Member | Roll No. | Subsystem Responsibility & Contribution |
 | :--- | :---: | :--- |
 | **Hrishabh Prajapati** | 2401020027 | Architecture, RTL implementation, system integration, testbench development, simulation verification, documentation, and repository management |
 | **Jigyasu Kalyan** | 2401010201 | No technical contribution reported |
-| **Pratyush Parida** | 2401010351 | No technical contribution reported |
+| **Pratyush Parida** | 2401010351 | Technical project contribution approximately half of Hrishabh Prajapati's contribution |
 | **Preet Vardhan** | 2401010352 | No technical contribution reported |
 | **Raghav Gupta** | 2401010365 | No technical contribution reported |
 
