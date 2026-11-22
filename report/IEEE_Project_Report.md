@@ -303,13 +303,13 @@ The empirical simulation results demonstrate:
 
 ## XII. Individual Contributions
 
-The project was completed by the assigned academic project team listed below. Hrishabh Prajapati (2401020027) led the architecture and diagrams, synthesizable RTL implementation and system integration, simulation testbench development, and cycle-accurate verification. Pratyush Parida (2401010351) contributed the IEEE project report and technical documentation, plus the README and prototype demonstration documentation. Pratyush's contribution is recorded as approximately half of Hrishabh's. No technical contributions were reported for the other listed team members.
+Hrishabh Prajapati (2401020027) led the architecture design, prepared the diagrams, implemented and integrated the Verilog RTL, developed the testbench, and verified the design through simulation. Pratyush Parida (2401010351) finalized the IEEE project report, updated the architecture documentation and README, and documented the prototype demonstration. No technical contributions were reported for the other listed team members.
 
 | Team Member | Roll / Reg. No. | Contribution |
 | :--- | :---: | :--- |
 | **Hrishabh Prajapati** | 2401020027 | Architecture and diagrams; RTL implementation and integration; testbench development; verification |
 | **Jigyasu Kalyan** | 2401010201 | No technical contribution reported |
-| **Pratyush Parida** | 2401010351 | IEEE project report and technical documentation; README and prototype demonstration documentation (approximately half of Hrishabh's contribution) |
+| **Pratyush Parida** | 2401010351 | IEEE report finalization, architecture documentation, README updates, and prototype demonstration documentation |
 | **Preet Vardhan** | 2401010352 | No technical contribution reported |
 | **Raghav Gupta** | 2401010365 | No technical contribution reported |
 
