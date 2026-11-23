@@ -405,7 +405,7 @@ Hrishabh Prajapati led the architecture design, prepared the diagrams, implement
 | **Jigyasu Kalyan** | 2401010201 | No technical contribution reported |
 | **Pratyush Parida** | 2401010351 | IEEE report finalization, architecture documentation, README updates, and prototype demonstration documentation |
 | **Preet Vardhan** | 2401010352 | No technical contribution reported |
-| **Raghav Gupta** | 2401010365 | No technical contribution reported |
+| **Raghav Gupta** | 2401010365 | Report Review and Phase II planning |
 
 ---
 
